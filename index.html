@@ -86,7 +86,7 @@ var CRIT_HELP={
   'Overall Presentation':'Does it look as good as it tastes?',
   'Bonus Point':'One point will be awarded for contestants who incorporate Mid-Autumn elements (lanterns, jade rabbits, and moon motifs) in their dish.'
 };
-var MAX=5, KEY='cookoff-r1-v6';
+var MAX=5, KEY='cookoff-r1-v7';
 var SUBMIT_URL='https://script.google.com/macros/s/AKfycbzzCvNP9RSDfNjIsRdsBUoJc6X9OV8vFOXdUf5kF41yFIzygqGP7x9Drz9mP58ePfM/exec';
 
 // Baseline 10 dishes
@@ -184,11 +184,14 @@ $('grid').addEventListener('click',function(e){
     var maxId=0;
     S.dishes.forEach(function(d){if(+d.id>maxId)maxId=+d.id;});
     var nextId=maxId+1;
-    // Add immediately without confirm prompt
     S.dishes.push({id:nextId,name:''});
     save();
     renderHome();
-    openDish(nextId);
+
+    var newTile=document.querySelector('button.dish[data-id="'+nextId+'"]');
+    if(newTile){
+      newTile.scrollIntoView({behavior:'smooth',block:'center'});
+    }
     return;
   }
   var b=e.target.closest('button.dish');if(!b)return;
