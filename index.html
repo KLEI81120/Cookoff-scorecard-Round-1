@@ -6,10 +6,10 @@
 <title>Cook-off judge scorecard - Round 1</title>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f3f5f1;--card:#fff;--ink:#16302b;--mut:#5d716c;--line:#d5ddd8;--acc:#e0930c;--accInk:#1d1400;--ok:#2b7a57;--okBg:#dff1e7;
+:root{--bg:#f3f5f1;--card:#fff;--ink:#16302b;--mut:#5d716c;--line:#d5ddd8;--acc:#e0930c;--accInk:#1d1400;--ok:#2b7a57;--okBg:#dff1e7;--err:#b3261e;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1c19;--card:#182a26;--ink:#eaf1ee;--mut:#9bb0aa;--line:#2b423d;--acc:#f0a824;--ok:#5cc596;--okBg:#1d4034}}
-:root[data-theme="dark"]{--bg:#0f1c19;--card:#182a26;--ink:#eaf1ee;--mut:#9bb0aa;--line:#2b423d;--acc:#f0a824;--ok:#5cc596;--okBg:#1d4034}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1c19;--card:#182a26;--ink:#eaf1ee;--mut:#9bb0aa;--line:#2b423d;--acc:#f0a824;--ok:#5cc596;--okBg:#1d4034;--err:#f2b8b5}}
+:root[data-theme="dark"]{--bg:#0f1c19;--card:#182a26;--ink:#eaf1ee;--mut:#9bb0aa;--line:#2b423d;--acc:#f0a824;--ok:#5cc596;--okBg:#1d4034;--err:#f2b8b5}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.45}
@@ -18,15 +18,18 @@ h1{font-size:1.9rem;font-weight:800;margin:0 0 4px;letter-spacing:-.02em}
 h2{font-size:1.1rem;margin:28px 0 10px}
 .sub{color:var(--mut);margin:0 0 16px}
 label{display:block;font-size:.85rem;color:var(--mut);margin-bottom:4px}
-input,textarea{width:100%;font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px}
+input,textarea{width:100%;font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;transition:border-color .2s}
 input:focus,textarea:focus,button:focus-visible{outline:3px solid var(--acc);outline-offset:1px}
+input.need-name{border-color:var(--err)!important;outline:3px solid var(--err)!important;animation:shake .3s ease-in-out}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 button{font:inherit;cursor:pointer;color:var(--ink)}
 .prog{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;margin:16px 0}
 .prog b{font-size:1.5rem}
 .bar{height:12px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:8px}
 .bar i{display:block;height:100%;background:var(--ok);transition:width .3s}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
-.dish{min-height:92px;text-align:left;padding:12px;border-radius:12px;border:2px dashed var(--line);background:var(--card);display:flex;flex-direction:column;justify-content:space-between}
+.grid.locked .dish{opacity:.45;cursor:not-allowed}
+.dish{min-height:92px;text-align:left;padding:12px;border-radius:12px;border:2px dashed var(--line);background:var(--card);display:flex;flex-direction:column;justify-content:space-between;transition:opacity .2s,border-color .2s,background .2s}
 .dish .n{font-weight:800;font-size:1.25rem}
 .dish .nm{font-size:.85rem;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dish .st{font-size:.85rem;font-weight:600;color:var(--mut)}
@@ -59,9 +62,9 @@ th{color:var(--mut);font-weight:600}
 <main>
 <section id="home">
   <h1>Cook-off scorecard - Round 1</h1>
-  <p class="sub">Tap any dish to rate it, in any order. You can change a score later.</p>
+  <p class="sub">Enter your name first, then tap any dish to rate it in any order.</p>
   <label for="judge">Judge name</label>
-  <input id="judge" placeholder="Your name" autocomplete="name">
+  <input id="judge" placeholder="Your name (required before rating)" autocomplete="name">
   <div class="prog"><div class="row"><span><b id="cnt">0</b> of <span id="tot">0</span> dishes rated</span><span id="left" class="sub" style="margin:0"></span></div><div class="bar"><i id="fill" style="width:0"></i></div><p id="sync" class="sub" style="margin:10px 0 0;font-size:.9rem"></p></div>
   <div class="grid" id="grid"></div>
   <div id="results"></div>
@@ -86,7 +89,7 @@ var CRIT_HELP={
   'Overall Presentation':'Does it look as good as it tastes?',
   'Bonus Point':'One point will be awarded for contestants who incorporate Mid-Autumn elements (lanterns, jade rabbits, and moon motifs) in their dish.'
 };
-var MAX=5, KEY='cookoff-r1-v7';
+var MAX=5, KEY='cookoff-r1-v8';
 var SUBMIT_URL='https://script.google.com/macros/s/AKfycbzzCvNP9RSDfNjIsRdsBUoJc6X9OV8vFOXdUf5kF41yFIzygqGP7x9Drz9mP58ePfM/exec';
 
 // Baseline 10 dishes
@@ -119,14 +122,32 @@ function total(r){return CRITERIA.reduce(function(a,c){return a+(r.scores[c]||0)
 function maxOf(c){return YESNO[c]?1:MAX}
 function maxTotal(){return CRITERIA.reduce(function(a,c){return a+maxOf(c)},0)}
 function label(d){return 'Dish '+d.id+(d.name?' · '+d.name:'')}
+function hasJudgeName(){return !!(S.judge||'').trim()}
+
+function requireJudgeName(){
+  var inp=$('judge');
+  inp.classList.remove('need-name');
+  void inp.offsetWidth; // retrigger css animation
+  inp.classList.add('need-name');
+  inp.focus();
+  inp.scrollIntoView({behavior:'smooth',block:'center'});
+}
 
 function renderHome(){
   var done=S.dishes.filter(function(d){return S.ratings[d.id]}).length;
   $('cnt').textContent=done;$('tot').textContent=S.dishes.length;
   var left=S.dishes.length-done;
-  $('left').textContent=left?left+' still to taste':'All rated';
+  var named=hasJudgeName();
+  $('left').textContent=!named?'Enter your name above to unlock dishes':(left?left+' still to taste':'All rated');
   $('fill').style.width=(S.dishes.length?done/S.dishes.length*100:0)+'%';
   $('judge').value=S.judge||'';
+
+  var grid=$('grid');
+  if(!named){
+    grid.classList.add('locked');
+  }else{
+    grid.classList.remove('locked');
+  }
   
   var h='';
   S.dishes.forEach(function(d){
@@ -134,10 +155,9 @@ function renderHome(){
     h+='<button class="dish'+(r?' done':'')+'" data-id="'+d.id+'"><span><span class="n">Dish '+d.id+'</span><br><span class="nm">'+esc(d.name||'')+'</span></span><span class="st">'+(r?'Rated · '+total(r)+'/'+maxTotal():'Not rated yet')+'</span></button>';
   });
 
-  // Tap-to-add dish tile
   h+='<button type="button" class="dish add-tile" id="add-dish-btn"><span class="plus-icon">&#65291;</span><span>Add dish</span></button>';
 
-  $('grid').innerHTML=h;
+  grid.innerHTML=h;
   var rated=S.dishes.filter(function(d){return S.ratings[d.id]}).sort(function(a,b){return total(S.ratings[b.id])-total(S.ratings[a.id])});
   if(!rated.length){$('results').innerHTML='';updateSync();return}
   var t='<h2>My scores so far</h2><div class="scroll"><table><tr><th>Dish</th>'+CRITERIA.map(function(c){return'<th>'+esc(c)+'</th>'}).join('')+'<th>Total</th></tr>';
@@ -171,7 +191,7 @@ function renderCrits(){
   });
   $('crits').innerHTML=h;
   var scored=CRITERIA.every(function(c){return draft.scores[c]!==undefined});
-  var named=(S.judge||'').trim().length>0;
+  var named=hasJudgeName();
   $('save').disabled=!(scored&&named);
   $('rtotal').textContent=!named?'Enter your name on the main page first':scored?'Total '+total(draft)+' / '+maxTotal():'Score every category to save';
 }
@@ -179,6 +199,13 @@ function renderCrits(){
 function goHome(){cur=null;$('rate').classList.add('hide');$('home').classList.remove('hide');renderHome()}
 
 $('grid').addEventListener('click',function(e){
+  // Check if user has entered name first
+  if(!hasJudgeName()){
+    e.preventDefault();
+    requireJudgeName();
+    return;
+  }
+
   var addBtn=e.target.closest('#add-dish-btn');
   if(addBtn){
     var maxId=0;
@@ -203,7 +230,15 @@ $('crits').addEventListener('click',function(e){
   draft.scores[CRITERIA[b.dataset.c]]=+b.dataset.v;renderCrits();
 });
 
-$('judge').addEventListener('input',function(){S.judge=this.value;save()});
+$('judge').addEventListener('input',function(){
+  S.judge=this.value;
+  if(this.value.trim()){
+    this.classList.remove('need-name');
+  }
+  save();
+  renderHome();
+});
+
 $('judge').addEventListener('change',function(){
   if(!S.judge.trim())return;
   Object.keys(S.ratings).forEach(queue);save();flush();
