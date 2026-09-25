@@ -32,7 +32,9 @@ button{font:inherit;cursor:pointer;color:var(--ink)}
 .dish .st{font-size:.85rem;font-weight:600;color:var(--mut)}
 .dish.done{border:2px solid var(--ok);background:var(--okBg)}
 .dish.done .st{color:var(--ok)}
-.dish.add{align-items:center;justify-content:center;font-weight:600;color:var(--mut)}
+.dish.add-tile{align-items:center;justify-content:center;font-weight:700;color:var(--mut);border:2px dashed var(--line);background:none;transition:border-color .2s,color .2s;gap:4px}
+.dish.add-tile:hover{border-color:var(--acc);color:var(--ink);background:var(--card)}
+.dish.add-tile .plus-icon{font-size:1.5rem;line-height:1}
 .btn{border:0;background:var(--acc);color:var(--accInk);font-weight:700;border-radius:10px;padding:12px 18px}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .ghost{background:none;border:1.5px solid var(--line);border-radius:10px;padding:8px 14px;color:var(--mut)}
@@ -76,41 +78,42 @@ th{color:var(--mut);font-weight:600}
 </section>
 </main>
 <script>
-// Edit this list to change what judges score, and the top of the scale.
 var CRITERIA=['Texture','Taste','Overall Presentation','Bonus Point'];
-// Categories listed here are scored 0 or 1 (No / Yes) instead of 1 to 5 stars.
 var YESNO={'Bonus Point':true};
-// Optional one-line guidance shown under a category. Add one entry per category name.
 var CRIT_HELP={
   'Texture':'Is the noodle component doing what it was born to do?',
   'Taste':'Does it actually taste amazing? This may be the most important question of all.',
   'Overall Presentation':'Does it look as good as it tastes?',
   'Bonus Point':'One point will be awarded for contestants who incorporate Mid-Autumn elements (lanterns, jade rabbits, and moon motifs) in their dish.'
 };
-var MAX=5, KEY='cookoff-r1-v3';
-// Google Apps Script web app URL to send scores to your Round 1 Google Sheet.
+var MAX=5, KEY='cookoff-r1-v5';
 var SUBMIT_URL='https://script.google.com/macros/s/AKfycbzzCvNP9RSDfNjIsRdsBUoJc6X9OV8vFOXdUf5kF41yFIzygqGP7x9Drz9mP58ePfM/exec';
 
-// Dishes 1 to 21 for Round 1
-var DISH_IDS=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+// Set baseline dishes 1 to 10
+var INITIAL_DISH_IDS=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 var DISH_NAME_MAP={};
 
 var S=load(), cur=null, draft=null, armed={}, sending=false;
 S.pending=S.pending||{};
 if(!S.jid)S.jid=Math.random().toString(36).slice(2,10);
-S.dishes=DISH_IDS.map(function(num){
-  return {id: num, name: DISH_NAME_MAP[num] || ''};
-});
 
 var $=function(i){return document.getElementById(i)};
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+
 function load(){
-  try{var r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}
-  var d=DISH_IDS.map(function(num){
+  try{
+    var r=localStorage.getItem(KEY);
+    if(r){
+      var parsed=JSON.parse(r);
+      if(parsed && parsed.dishes && parsed.dishes.length) return parsed;
+    }
+  }catch(e){}
+  var d=INITIAL_DISH_IDS.map(function(num){
     return {id: num, name: DISH_NAME_MAP[num] || ''};
   });
-  return{judge:'',dishes:d,ratings:{}};
+  return {judge:'', dishes:d, ratings:{}};
 }
+
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function total(r){return CRITERIA.reduce(function(a,c){return a+(r.scores[c]||0)},0)}
 function maxOf(c){return YESNO[c]?1:MAX}
@@ -124,11 +127,16 @@ function renderHome(){
   $('left').textContent=left?left+' still to taste':'All rated';
   $('fill').style.width=(S.dishes.length?done/S.dishes.length*100:0)+'%';
   $('judge').value=S.judge||'';
+  
   var h='';
   S.dishes.forEach(function(d){
     var r=S.ratings[d.id];
     h+='<button class="dish'+(r?' done':'')+'" data-id="'+d.id+'"><span><span class="n">Dish '+d.id+'</span><br><span class="nm">'+esc(d.name||'')+'</span></span><span class="st">'+(r?'Rated · '+total(r)+'/'+maxTotal():'Not rated yet')+'</span></button>';
   });
+
+  // Tap-to-add dish tile
+  h+='<button type="button" class="dish add-tile" id="add-dish-btn"><span class="plus-icon">&#65291;</span><span>Add dish</span></button>';
+
   $('grid').innerHTML=h;
   var rated=S.dishes.filter(function(d){return S.ratings[d.id]}).sort(function(a,b){return total(S.ratings[b.id])-total(S.ratings[a.id])});
   if(!rated.length){$('results').innerHTML='';updateSync();return}
@@ -146,6 +154,7 @@ function openDish(id){
   $('home').classList.add('hide');$('rate').classList.remove('hide');
   renderCrits();window.scrollTo(0,0);
 }
+
 function renderCrits(){
   var h='';
   CRITERIA.forEach(function(c,ci){
@@ -166,43 +175,64 @@ function renderCrits(){
   $('save').disabled=!(scored&&named);
   $('rtotal').textContent=!named?'Enter your name on the main page first':scored?'Total '+total(draft)+' / '+maxTotal():'Score every category to save';
 }
+
 function goHome(){cur=null;$('rate').classList.add('hide');$('home').classList.remove('hide');renderHome()}
 
 $('grid').addEventListener('click',function(e){
-  var b=e.target.closest('button');if(!b)return;
+  var addBtn=e.target.closest('#add-dish-btn');
+  if(addBtn){
+    var maxId=0;
+    S.dishes.forEach(function(d){if(+d.id>maxId)maxId=+d.id;});
+    var nextId=maxId+1;
+    if(confirm('Add Dish '+nextId+' to the scorecard?')){
+      S.dishes.push({id:nextId,name:''});
+      save();
+      renderHome();
+      openDish(nextId);
+    }
+    return;
+  }
+  var b=e.target.closest('button.dish');if(!b)return;
   openDish(b.dataset.id);
 });
+
 $('crits').addEventListener('click',function(e){
   var b=e.target.closest('button');if(!b)return;
   draft.scores[CRITERIA[b.dataset.c]]=+b.dataset.v;renderCrits();
 });
+
 $('judge').addEventListener('input',function(){S.judge=this.value;save()});
 $('judge').addEventListener('change',function(){
   if(!S.judge.trim())return;
   Object.keys(S.ratings).forEach(queue);save();flush();
 });
+
 $('back').onclick=goHome;
 $('save').onclick=function(){
   S.ratings[cur.id]={scores:draft.scores,note:$('note').value};
   queue(cur.id);
   save();goHome();flush();
 };
+
 $('reset').onclick=function(){
   if(!armed.reset){armed.reset=1;this.textContent='Tap again to clear every score';return}
   armed.reset=0;this.textContent='Clear all my scores';S.ratings={};save();renderHome();
 };
+
 // ---- Sending scores to the organizer's Google Sheet ----
 function queue(id){
   var d=S.dishes.filter(function(x){return x.id==id})[0],r=S.ratings[id];
   if(!d||!r||!S.judge.trim())return;
   S.pending[id]={jid:S.jid,judge:S.judge.trim(),dish:d.id,dishName:d.name,criteria:CRITERIA,scores:r.scores,total:total(r),note:r.note,at:new Date().toISOString()};
 }
+
 function updateSync(){
   var el=$('sync');if(!el)return;
   if(!SUBMIT_URL){el.textContent='';return}
   var n=Object.keys(S.pending).length;
   el.textContent=n?n+' score'+(n>1?'s':'')+' waiting to send. Keep this page open with a connection.':'All your scores have been sent.';
 }
+
 function flush(){
   var ids=Object.keys(S.pending);
   if(!SUBMIT_URL||!ids.length||sending){updateSync();return}
@@ -213,6 +243,7 @@ function flush(){
     .catch(function(){sending=false;updateSync()});
   updateSync();
 }
+
 window.addEventListener('online',flush);
 setInterval(flush,15000);
 Object.keys(S.ratings).forEach(function(id){if(!S.pending[id]&&!S.sentOnce)queue(id)});
